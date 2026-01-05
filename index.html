@@ -7,104 +7,113 @@
         body { margin: 0; background-color: #222; overflow: hidden; }
         canvas { display: block; }
         #info { 
-            position: absolute; top: 10px; width: 100%; text-align: center; 
-            color: white; font-family: sans-serif; pointer-events: none;
-            text-shadow: 1px 1px 2px black; z-index: 10;
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
-    <div id="info">正在加載模型並同步時間...</div>
+<div id="info">正在加載模型並同步時間...</div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/loaders/GLTFLoader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a1a);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // 修正視角：將相機放在 Z 軸正面看時鐘
-        camera.position.set(0, 0, 5); 
+const camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);
+camera.position.set(0, 0, 5);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.body.appendChild(renderer.domElement);
 
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enablePan = false;
-        controls.enableDamping = true;
-        // 限制視角 ±45 度
-        controls.minAzimuthAngle = -Math.PI / 4; 
-        controls.maxAzimuthAngle = Math.PI / 4;
-        controls.minPolarAngle = Math.PI / 4;
-        controls.maxPolarAngle = Math.PI * 3 / 4;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+controls.minAzimuthAngle = -Math.PI / 4;
+controls.maxAzimuthAngle =  Math.PI / 4;
+controls.minPolarAngle   =  Math.PI / 4;
+controls.maxPolarAngle   =  Math.PI * 3 / 4;
 
-        const light1 = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(light1);
-        const light2 = new THREE.DirectionalLight(0xffffff, 1.5);
-        light2.position.set(5, 5, 5);
-        scene.add(light2);
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(5, 5, 5);
+scene.add(dirLight);
 
-        let hourHand, minuteHand, secondHand;
+let hourHand, minuteHand, secondHand;
 
-        const loader = new GLTFLoader();
-        // 使用相對路徑，確保 GitHub 能找到檔案
-        loader.load('./2026-01-05.glb', (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
-            
-            // 修正模型朝向，讓它正對鏡頭
-            model.rotation.y = Math.PI / 2;
+const loader = new GLTFLoader();
+loader.load(
+    './2026-01-05.glb',
+    (gltf) => {
+        const model = gltf.scene;
+        scene.add(model);
 
-            hourHand = model.getObjectByName('HourHand');
-            minuteHand = model.getObjectByName('MinuteHand');
-            secondHand = model.getObjectByName('SecondHand');
+        model.rotation.y = Math.PI / 2;
 
-            document.getElementById('info').innerText = "時間已同步 (限制旋轉角度)";
-            console.log("發現物體:", model.children.map(c => c.name));
-        }, undefined, (error) => {
-            document.getElementById('info').innerText = "模型載入失敗，請檢查檔案名稱";
-            console.error(error);
-        });
+        hourHand   = model.getObjectByName('HourHand');
+        minuteHand = model.getObjectByName('MinuteHand');
+        secondHand = model.getObjectByName('SecondHand');
 
-        function animate() {
-            requestAnimationFrame(animate);
+        document.getElementById('info').innerText = '時間已同步';
+        console.log('模型物件：', model.children.map(o => o.name));
+    },
+    undefined,
+    (err) => {
+        document.getElementById('info').innerText = '模型載入失敗';
+        console.error(err);
+    }
+);
 
-            if (hourHand && minuteHand && secondHand) {
-                const now = new Date();
-                const ms = now.getMilliseconds();
-                const s = now.getSeconds() + ms / 1000;
-                const m = now.getMinutes() + s / 60;
-                const h = (now.getHours() % 12) + m / 60;
+function animate() {
+    requestAnimationFrame(animate);
 
-                // 根據你的模型結構，應該旋轉 Z 軸
-                secondHand.rotation.z = -(s / 60) * Math.PI * 2;
-                minuteHand.rotation.z = -(m / 60) * Math.PI * 2;
-                hourHand.rotation.z = -(h / 12) * Math.PI * 2;
-            }
+    if (hourHand && minuteHand && secondHand) {
+        const now = new Date();
+        const s = now.getSeconds() + now.getMilliseconds() / 1000;
+        const m = now.getMinutes() + s / 60;
+        const h = (now.getHours() % 12) + m / 60;
 
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
+        secondHand.rotation.z = -(s / 60) * Math.PI * 2;
+        minuteHand.rotation.z = -(m / 60) * Math.PI * 2;
+        hourHand.rotation.z   = -(h / 12) * Math.PI * 2;
+    }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+    controls.update();
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
 </body>
 </html>
