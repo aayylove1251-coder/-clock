@@ -67,30 +67,36 @@
         });
 
         // --- 動畫與時間同步邏輯 ---
-       function animate() {
-        requestAnimationFrame(animate);
+     function animate() {
+    requestAnimationFrame(animate);
 
-        if (hourHand && minuteHand && secondHand) {
-            const now = new Date();
-            const ms = now.getMilliseconds();
-            const s = now.getSeconds() + ms / 1000;
-            const m = now.getMinutes() + s / 60;
-            const h = (now.getHours() % 12) + m / 60;
+    if (hourHand && minuteHand && secondHand) {
+        const now = new Date();
+        const s = now.getSeconds();
+        const m = now.getMinutes();
+        const h = now.getHours();
+        const ms = now.getMilliseconds();
 
-            // 根據你的模型結構，通常在 Three.js 裡是繞 Y 軸轉動
-            // 如果 Y 不對，請嘗試換成 .rotation.z
-            secondHand.rotation.y = -(s / 60) * Math.PI * 2;
-            minuteHand.rotation.y = -(m / 60) * Math.PI * 2;
-            hourHand.rotation.y = -(h / 12) * Math.PI * 2;
-        } else {
-            // 如果一直顯示這個，代表 model.getObjectByName 沒抓到正確的名稱
-            // console.log("等待模型加載中...");
-        }
+        // 1. 計算旋轉比例
+        const s_ratio = (s + ms / 1000) / 60;
+        const m_ratio = (m + s_ratio) / 60;
+        const h_ratio = ((h % 12) + m_ratio) / 12;
 
-        controls.update();
-        renderer.render(scene, camera);
+        // 2. 轉換為弧度 (2π = 一圈)
+        const s_rot = s_ratio * Math.PI * 2;
+        const m_rot = m_ratio * Math.PI * 2;
+        const h_rot = h_ratio * Math.PI * 2;
+
+        // 3. 根據你的模型結構，應該旋轉 X 軸
+        // 如果發現轉的方向反了，把 "-" 號拿掉或加上去
+        secondHand.rotation.x = -s_rot;
+        minuteHand.rotation.x = -m_rot;
+        hourHand.rotation.x = -h_rot;
     }
 
+    controls.update();
+    renderer.render(scene, camera);
+}
         // 視窗縮放處理
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -100,4 +106,5 @@
     </script>
 </body>
 </html>
+
 
