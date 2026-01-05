@@ -57,40 +57,32 @@
     });
 
     // --- 3. 更新時間的動畫迴圈 ---
-    function animate() {
+function animate() {
         requestAnimationFrame(animate);
 
         if (hourHand && minuteHand && secondHand) {
             const now = new Date();
-            const s = now.getSeconds();
-            const m = now.getMinutes();
-            const h = now.getHours();
-            const ms = now.getMilliseconds(); // 獲取毫秒讓秒針更平滑
+            const ms = now.getMilliseconds();
+            const s = now.getSeconds() + ms / 1000;
+            const m = now.getMinutes() + s / 60;
+            const h = (now.getHours() % 12) + m / 60;
 
-            // 計算旋轉角度 (弧度制)
-            // 如果你的時鐘方向不同，可能要調整 "-" 號或 rotation 的軸向
-            const s breeze = ((s + ms / 1000) / 60) * Math.PI * 2;
-            const m_rot = ((m + s / 60) / 60) * Math.PI * 2;
-            const h_rot = (((h % 12) + m / 60) / 12) * Math.PI * 2;
-
-            // 這裡假設是繞著 Z 軸轉（順時針旋轉通常要在角度前加負號）
-            secondHand.rotation.z = -s_rot;
-            minuteHand.rotation.z = -m_rot;
-            hourHand.rotation.z = -h_rot;
+            // 根據你的模型結構，通常在 Three.js 裡是繞 Y 軸轉動
+            // 如果 Y 不對，請嘗試換成 .rotation.z
+            secondHand.rotation.y = -(s / 60) * Math.PI * 2;
+            minuteHand.rotation.y = -(m / 60) * Math.PI * 2;
+            hourHand.rotation.y = -(h / 12) * Math.PI * 2;
+        } else {
+            // 如果一直顯示這個，代表 model.getObjectByName 沒抓到正確的名稱
+            // console.log("等待模型加載中...");
         }
 
+        controls.update();
         renderer.render(scene, camera);
     }
 
-    animate();
-
-    // 視窗自適應
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
 </script>
 </body>
 </html>
+
 
