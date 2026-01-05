@@ -35,6 +35,32 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
+        // --- 1. 調整初始相機位置 ---
+// 假設你的時鐘正面朝向 Z 軸，將相機放在 Z 軸的正前方
+camera.position.set(0, 0, 5); 
+
+// --- 2. 控制器設定 ---
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+
+// 限制左右 45 度
+controls.minAzimuthAngle = -Math.PI / 4; 
+controls.maxAzimuthAngle = Math.PI / 4;
+
+// 限制上下 45 度 (以 90度 為中心)
+controls.minPolarAngle = Math.PI / 4;      // 45 度
+controls.maxPolarAngle = Math.PI * 3 / 4;  // 135 度 (即 90+45)
+
+// --- 3. 在 animate 函式裡記得更新 ---
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // ... 時間同步邏輯 ...
+
+    controls.update(); // 必須呼叫才能讓限制與阻尼生效
+    renderer.render(scene, camera);
+}
 
         // 控制器（讓你家用滑鼠旋轉查看時鐘）
         const controls = new OrbitControls(camera, renderer.domElement);
@@ -105,7 +131,30 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+        // --- 限制攝影機旋轉範圍 ---
+// 1. 禁用平移（右鍵拖拽），讓視角永遠對準中心
+controls.enablePan = false;
+
+// 2. 限制左右旋轉 (Azimuth Angle)
+// 45 度換算成弧度約為 Math.PI / 4
+controls.minAzimuthAngle = -Math.PI / 4; // 左邊 45 度
+controls.maxAzimuthAngle = Math.PI / 4;  // 右邊 45 度
+
+// 3. 限制上下旋轉 (Polar Angle)
+// 預設正中央是 Math.PI / 2 (90度)
+// 我們設定在 90度 加減 45度 之間
+controls.minPolarAngle = Math.PI / 2 - Math.PI / 4; // 往上仰 45 度
+controls.maxPolarAngle = Math.PI / 2 + Math.PI / 4; // 往下俯 45 度
+
+// 4. (選配) 限制縮放距離，防止拉太遠或太近
+controls.minDistance = 2; 
+controls.maxDistance = 10;
+
+// 讓旋轉更有手感（增加阻尼感）
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
     </script>
 </body>
 
 </html>
+
