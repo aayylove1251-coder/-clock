@@ -2,15 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>3D 同步時鐘預覽</title>
+    <title>3D 真實模擬鬧鐘</title>
     <style>
-        body { margin: 0; background-color: #222; overflow: hidden; }
-        canvas { display: block; }
+        body { margin: 0; background: #1a1a1a; overflow: hidden; }
         #info { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="info">正在同步系統時間...</div>
+    <div id="info">現實時間同步中</div>
 
     <script type="importmap">
         {
@@ -26,84 +25,83 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- 場景設定 ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 5);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(renderer.domElement);
-
-        // 控制器（讓你家用滑鼠旋轉查看時鐘）
-        const controls = new OrbitControls(camera, renderer.domElement);
-
-        // 光源
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(5, 10, 7);
-        scene.add(dirLight);
-
-        // --- 載入你的 2026-01-05.glb 模型 ---
+        let scene, camera, renderer, controls;
         let hourHand, minuteHand, secondHand;
 
-        const loader = new GLTFLoader();
-        // 請確保檔案名稱與模型檔案一致
-        loader.load('2026-01-05.glb', (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
+        init();
 
-            // 抓取模型中的指針節點
-            hourHand = model.getObjectByName('HourHand');
-            minuteHand = model.getObjectByName('MinuteHand');
-            secondHand = model.getObjectByName('SecondHand');
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222);
 
-            console.log("時鐘模型載入完畢！");
-        }, undefined, (error) => {
-            console.error("載入出錯：", error);
-        });
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 5); // 正對著鐘面
 
-        // --- 動畫與時間同步邏輯 ---
-        function animate() {
-    requestAnimationFrame(animate);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
 
-    if (hourHand && minuteHand && secondHand) {
-        const now = new Date();
-        const s = now.getSeconds();
-        const m = now.getMinutes();
-        const h = now.getHours();
-        const ms = now.getMilliseconds();
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
 
-        // 1. 計算旋轉比例
-        const s_ratio = (s + ms / 1000) / 60;
-        const m_ratio = (m + s_ratio) / 60;
-        const h_ratio = ((h % 12) + m_ratio) / 12;
+            controls = new OrbitControls(camera, renderer.domElement);
 
-        // 2. 轉換為弧度 (2π = 一圈)
-        const s_rot = s_ratio * Math.PI * 2;
-        const m_rot = m_ratio * Math.PI * 2;
-        const h_rot = h_ratio * Math.PI * 2;
+            const loader = new GLTFLoader();
+            loader.load('./clock.glb', (gltf) => {
+                const model = gltf.scene;
+                scene.add(model);
 
-        // 3. 根據你的模型結構，應該旋轉 X 軸
-        // 如果發現轉的方向反了，把 "-" 號拿掉或加上去
-        secondHand.rotation.x = -s_rot;
-        minuteHand.rotation.x = -m_rot;
-        hourHand.rotation.x = -h_rot;
-    }
+                // 根據你模型內的正確名稱抓取
+                hourHand = model.getObjectByName('Hour');
+                minuteHand = model.getObjectByName('Minute');
+                secondHand = model.getObjectByName('Second');
 
-    controls.update();
-    renderer.render(scene, camera);
-}
+                // 自動將整個鬧鐘模型置中
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                model.position.sub(center);
 
-        // 視窗縮放處理
-        window.addEventListener('resize', () => {
+                animate();
+            });
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function updateClock() {
+            if (!hourHand || !minuteHand || !secondHand) return;
+
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const msec = now.getMilliseconds();
+
+            // 計算旋轉（負號是因為在 Three.js 中，-Z 是順時針）
+            const sRad = -((seconds + msec / 1000) * (Math.PI / 30));
+            const mRad = -((minutes * 6 + seconds / 10) * (Math.PI / 180));
+            const hRad = -(((hours % 12) * 30 + minutes / 2) * (Math.PI / 180));
+
+            // 套用旋轉到 Z 軸
+            secondHand.rotation.z = sRad;
+            minuteHand.rotation.z = mRad;
+            hourHand.rotation.z = hRad;
+        }
+
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateClock();
+            controls.update();
+            renderer.render(scene, camera);
+        }
     </script>
 </body>
 </html>
-
