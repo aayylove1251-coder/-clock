@@ -56,9 +56,9 @@
             scene.add(model);
 
             // 抓取模型中的指針節點
-            hourHand = model.getObjectByName('HourHand');
-            minuteHand = model.getObjectByName('MinuteHand');
-            secondHand = model.getObjectByName('SecondHand');
+            hourHand = model.getObjectByName('hourHand');
+            minuteHand = model.getObjectByName('minuteHand');
+            secondHand = model.getObjectByName('secondHand');
 
             console.log("時鐘模型載入完畢！");
         }, undefined, (error) => {
@@ -100,4 +100,5 @@
     </script>
 </body>
 </html>
+
 
