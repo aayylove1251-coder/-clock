@@ -66,45 +66,37 @@
         });
 
         // --- 動畫與時間同步邏輯 ---
-        function animate() {
-            requestAnimationFrame(animate);
+       function animate() {
+    requestAnimationFrame(animate);
 
-            if (hourHand && minuteHand && secondHand) {
-                const now = new Date();
-                const h = now.getHours();
-                const m = now.getMinutes();
-                const s = now.getSeconds();
-                const ms = now.getMilliseconds();
+    if (hourHand && minuteHand && secondHand) {
+        const now = new Date();
+        const s = now.getSeconds();
+        const m = now.getMinutes();
+        const h = now.getHours();
+        const ms = now.getMilliseconds();
 
-                // 計算角度 (弧度制)
-                // 圓周是 Math.PI * 2
-                // 我們讓它繞 Y 軸轉 (rotation.y)
-                
-                // 秒針：每一毫秒都在微動，達成平滑效果
-                const s_ratio = (s + ms / 1000) / 60;
-                secondHand.rotation.y = -s_ratio * Math.PI * 2;
+        // 1. 計算旋轉比例
+        const s_ratio = (s + ms / 1000) / 60;
+        const m_ratio = (m + s_ratio) / 60;
+        const h_ratio = ((h % 12) + m_ratio) / 12;
 
-                // 分針
-                const m_ratio = (m + s_ratio) / 60;
-                minuteHand.rotation.y = -m_ratio * Math.PI * 2;
+        // 2. 轉換為弧度 (2π = 一圈)
+        const s_rot = s_ratio * Math.PI * 2;
+        const m_rot = m_ratio * Math.PI * 2;
+        const h_rot = h_ratio * Math.PI * 2;
 
-                // 時針 (12小時制)
-                const h_ratio = ((h % 12) + m_ratio) / 12;
-                hourHand.rotation.y = -h_ratio * Math.PI * 2;
-            }
+        // 3. 根據你的模型結構，應該旋轉 X 軸
+        // 如果發現轉的方向反了，把 "-" 號拿掉或加上去
+        secondHand.rotation.x = -s_rot;
+        minuteHand.rotation.x = -m_rot;
+        hourHand.rotation.x = -h_rot;
+    }
 
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // 視窗縮放處理
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+    controls.update();
+    renderer.render(scene, camera);
+}
     </script>
 </body>
 </html>
+
