@@ -2,94 +2,109 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>3D 同步時鐘</title>
+    <title>3D 同步時鐘預覽</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
+        body { margin: 0; background-color: #222; overflow: hidden; }
         canvas { display: block; }
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; pointer-events: none; }
     </style>
 </head>
 <body>
+    <div id="info">正在同步系統時間...</div>
 
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
         }
-    }
-</script>
+    </script>
 
-<script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    // --- 1. 初始化場景 ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+        // --- 場景設定 ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 5);
 
-    // 光源
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5).set(0, 0, 1);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-
-    camera.position.z = 5;
-
-    // --- 2. 載入模型變數 ---
-    let hourHand, minuteHand, secondHand;
-
-    const loader = new GLTFLoader();
-    loader.load('clock.glb', (gltf) => {
-        const model = gltf.scene;
-        scene.add(model);
-
-        // 根據你在 Blender 裡的命名抓取指針
-        hourHand = model.getObjectByName('HourHand');
-        minuteHand = model.getObjectByName('MinuteHand');
-        secondHand = model.getObjectByName('SecondHand');
-
-        console.log("模型載入成功！");
-    }, undefined, (error) => {
-        console.error("載入失敗：", error);
-    });
-
-    // --- 3. 更新時間的動畫迴圈 ---
-    function animate() {
-        requestAnimationFrame(animate);
-
-        if (hourHand && minuteHand && secondHand) {
-            const now = new Date();
-            const s = now.getSeconds();
-            const m = now.getMinutes();
-            const h = now.getHours();
-            const ms = now.getMilliseconds(); // 獲取毫秒讓秒針更平滑
-
-            // 計算旋轉角度 (弧度制)
-            // 如果你的時鐘方向不同，可能要調整 "-" 號或 rotation 的軸向
-            const s breeze = ((s + ms / 1000) / 60) * Math.PI * 2;
-            const m_rot = ((m + s / 60) / 60) * Math.PI * 2;
-            const h_rot = (((h % 12) + m / 60) / 12) * Math.PI * 2;
-
-            // 這裡假設是繞著 Z 軸轉（順時針旋轉通常要在角度前加負號）
-            secondHand.rotation.z = -s_rot;
-            minuteHand.rotation.z = -m_rot;
-            hourHand.rotation.z = -h_rot;
-        }
-
-        renderer.render(scene, camera);
-    }
-
-    animate();
-
-    // 視窗自適應
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-</script>
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // 控制器（讓你家用滑鼠旋轉查看時鐘）
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // --- 載入你的 2026-01-05.glb 模型 ---
+        let hourHand, minuteHand, secondHand;
+
+        const loader = new GLTFLoader();
+        // 請確保檔案名稱與模型檔案一致
+        loader.load('2026-01-05.glb', (gltf) => {
+            const model = gltf.scene;
+            scene.add(model);
+
+            // 抓取模型中的指針節點
+            hourHand = model.getObjectByName('HourHand');
+            minuteHand = model.getObjectByName('MinuteHand');
+            secondHand = model.getObjectByName('SecondHand');
+
+            console.log("時鐘模型載入完畢！");
+        }, undefined, (error) => {
+            console.error("載入出錯：", error);
+        });
+
+        // --- 動畫與時間同步邏輯 ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (hourHand && minuteHand && secondHand) {
+                const now = new Date();
+                const h = now.getHours();
+                const m = now.getMinutes();
+                const s = now.getSeconds();
+                const ms = now.getMilliseconds();
+
+                // 計算角度 (弧度制)
+                // 圓周是 Math.PI * 2
+                // 我們讓它繞 Y 軸轉 (rotation.y)
+                
+                // 秒針：每一毫秒都在微動，達成平滑效果
+                const s_ratio = (s + ms / 1000) / 60;
+                secondHand.rotation.y = -s_ratio * Math.PI * 2;
+
+                // 分針
+                const m_ratio = (m + s_ratio) / 60;
+                minuteHand.rotation.y = -m_ratio * Math.PI * 2;
+
+                // 時針 (12小時制)
+                const h_ratio = ((h % 12) + m_ratio) / 12;
+                hourHand.rotation.y = -h_ratio * Math.PI * 2;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 視窗縮放處理
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
