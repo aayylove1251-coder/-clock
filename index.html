@@ -1,110 +1,100 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <title>3D 同步時鐘預覽</title>
-    <style>
-        body { margin: 0; background-color: #222; overflow: hidden; }
-        canvas { display: block; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; pointer-events: none; }
-    </style>
+<meta charset="UTF-8">
+<title>3D 同步時鐘</title>
+<style>
+body { margin:0; overflow:hidden; background:#111; }
+#info {
+    position:absolute;
+    top:10px;
+    width:100%;
+    text-align:center;
+    color:white;
+    font-family:sans-serif;
+}
+</style>
 </head>
 <body>
-    <div id="info">正在同步系統時間...</div>
+<div id="info">同步系統時間中…</div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // --- 場景設定 ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 5);
+const scene = new THREE.Scene();
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 2.5, 6);
+camera.rotation.x = THREE.MathUtils.degToRad(-25); // 固定視角
 
-        // 控制器（讓你家用滑鼠旋轉查看時鐘）
-        const controls = new OrbitControls(camera, renderer.domElement);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+document.body.appendChild(renderer.domElement);
 
-        // 光源
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(5, 10, 7);
-        scene.add(dirLight);
+// 光
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const d = new THREE.DirectionalLight(0xffffff, 1);
+d.position.set(5,10,5);
+scene.add(d);
 
-        // --- 載入你的 2026-01-05.glb 模型 ---
-        let hourHand, minuteHand, secondHand;
+let hourHand, minuteHand, secondHand;
 
-        const loader = new GLTFLoader();
-        // 請確保檔案名稱與模型檔案一致
-        loader.load('2026-01-05.glb', (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
+const loader = new GLTFLoader();
+loader.load('./2026-01-05.glb', gltf => {
+    const model = gltf.scene;
+    scene.add(model);
 
-            // 抓取模型中的指針節點
-            hourHand = model.getObjectByName('HourHand');
-            minuteHand = model.getObjectByName('MinuteHand');
-            secondHand = model.getObjectByName('SecondHand');
+    model.traverse(o => console.log('node:', o.name));
 
-            console.log("時鐘模型載入完畢！");
-        }, undefined, (error) => {
-            console.error("載入出錯：", error);
-        });
+    hourHand   = model.getObjectByName('HourHand');
+    minuteHand = model.getObjectByName('MinuteHand');
+    secondHand = model.getObjectByName('SecondHand');
 
-        // --- 動畫與時間同步邏輯 ---
-        function animate() {
-            requestAnimationFrame(animate);
+    if (!hourHand || !minuteHand || !secondHand) {
+        document.getElementById('info').innerText = '❌ 指針名稱抓不到（看 console）';
+        return;
+    }
 
-            if (hourHand && minuteHand && secondHand) {
-                const now = new Date();
-                const h = now.getHours();
-                const m = now.getMinutes();
-                const s = now.getSeconds();
-                const ms = now.getMilliseconds();
+    document.getElementById('info').innerText = '✔ 時鐘同步中';
+});
 
-                // 計算角度 (弧度制)
-                // 圓周是 Math.PI * 2
-                // 我們讓它繞 Y 軸轉 (rotation.y)
-                
-                // 秒針：每一毫秒都在微動，達成平滑效果
-                const s_ratio = (s + ms / 1000) / 60;
-                secondHand.rotation.y = -s_ratio * Math.PI * 2;
+function animate(){
+    requestAnimationFrame(animate);
 
-                // 分針
-                const m_ratio = (m + s_ratio) / 60;
-                minuteHand.rotation.y = -m_ratio * Math.PI * 2;
+    if (hourHand) {
+        const now = new Date();
+        const s = now.getSeconds() + now.getMilliseconds()/1000;
+        const m = now.getMinutes() + s/60;
+        const h = (now.getHours()%12) + m/60;
 
-                // 時針 (12小時制)
-                const h_ratio = ((h % 12) + m_ratio) / 12;
-                hourHand.rotation.y = -h_ratio * Math.PI * 2;
-            }
+        // 改成 Z 軸（最安全）
+        secondHand.rotation.z = -s/60 * Math.PI*2;
+        minuteHand.rotation.z = -m/60 * Math.PI*2;
+        hourHand.rotation.z   = -h/12 * Math.PI*2;
+    }
 
-            controls.update();
-            renderer.render(scene, camera);
-        }
+    renderer.render(scene, camera);
+}
+animate();
 
-        animate();
-
-        // 視窗縮放處理
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
+</script>
 </body>
 </html>
+
+
