@@ -56,9 +56,9 @@
             scene.add(model);
 
             // 抓取模型中的指針節點
-            hourHand = model.getObjectByName('HourHand');
-            minuteHand = model.getObjectByName('MinuteHand');
-            secondHand = model.getObjectByName('SecondHand');
+            HourHand = model.getObjectByName('HourHand');
+            MinuteHand = model.getObjectByName('MinuteHand');
+            SecondHand = model.getObjectByName('SecondHand');
 
             console.log("時鐘模型載入完畢！");
         }, undefined, (error) => {
@@ -69,7 +69,7 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            if (hourHand && minuteHand && secondHand) {
+            if (HourHand && MinuteHand && SecondHand) {
                 const now = new Date();
                 const h = now.getHours();
                 const m = now.getMinutes();
@@ -82,15 +82,15 @@
                 
                 // 秒針：每一毫秒都在微動，達成平滑效果
                 const s_ratio = (s + ms / 1000) / 60;
-                secondHand.rotation.y = -s_ratio * Math.PI * 2;
+                SecondHand.rotation.y = -s_ratio * Math.PI * 2;
 
                 // 分針
                 const m_ratio = (m + s_ratio) / 60;
-                minuteHand.rotation.y = -m_ratio * Math.PI * 2;
+                MinuteHand.rotation.y = -m_ratio * Math.PI * 2;
 
                 // 時針 (12小時制)
                 const h_ratio = ((h % 12) + m_ratio) / 12;
-                hourHand.rotation.y = -h_ratio * Math.PI * 2;
+                HourHand.rotation.y = -h_ratio * Math.PI * 2;
             }
 
             controls.update();
@@ -108,3 +108,4 @@
     </script>
 </body>
 </html>
+
