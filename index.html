@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>3D 同步時鐘 - 限制視角版</title>
+    <title>3D 同步時鐘 - 正面鎖定版</title>
     <style>
         body { margin: 0; background-color: #222; overflow: hidden; }
         canvas { display: block; }
@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-    <div id="info">滑鼠左鍵可旋轉視角 (限制 45度)</div>
+    <div id="info">已修正為正面視角 (限制 45度)</div>
 
     <script type="importmap">
         {
@@ -37,34 +37,34 @@
 
         // --- 1. 場景初始化 ---
         const scene = new THREE.Scene();
-        // 背景顏色稍微亮一點可以看到邊框
         scene.background = new THREE.Color(0x1a1a1a);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        // 設定相機初始位置（正面對著時鐘）
-        camera.position.set(0, 0, 5);
+        
+        // 【修正】根據你的模型，正面在 X 軸方向，所以我們把相機放在 X=5 的位置
+        camera.position.set(5, 0, 0); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        // --- 2. 限制視角的控制器 (OrbitControls) ---
+        // --- 2. 限制視角的控制器 ---
         const controls = new OrbitControls(camera, renderer.domElement);
         
-        controls.enablePan = false;        // 禁用右鍵平移
-        controls.enableDamping = true;     // 開啟阻尼感（滑順移動）
+        controls.enablePan = false;
+        controls.enableDamping = true;
         controls.dampingFactor = 0.05;
 
-        // 限制左右旋轉角度 (Azimuth)：±45度 = ±Math.PI / 4
-        controls.minAzimuthAngle = -Math.PI / 4; 
-        controls.maxAzimuthAngle = Math.PI / 4;
+        // 【修正】因為相機現在站在 X 軸，左右旋轉的基準點變了
+        // Math.PI / 2 是 90度（代表側面轉向正面），再加減 45度 (PI/4)
+        controls.minAzimuthAngle = Math.PI / 2 - Math.PI / 4; // 45度
+        controls.maxAzimuthAngle = Math.PI / 2 + Math.PI / 4; // 135度
 
-        // 限制上下旋轉角度 (Polar)：以 90度(正中央) 為準 ±45度
-        controls.minPolarAngle = Math.PI / 4;       // 仰角 45度
-        controls.maxPolarAngle = Math.PI * 3 / 4;   // 俯角 135度 (90+45)
+        // 上下限制 (維持在水平線上下 45 度)
+        controls.minPolarAngle = Math.PI / 4;       
+        controls.maxPolarAngle = Math.PI * 3 / 4;   
 
-        // 限制縮放距離（選配，防止滾輪滾太遠）
         controls.minDistance = 2;
         controls.maxDistance = 10;
 
@@ -83,15 +83,11 @@
             const model = gltf.scene;
             scene.add(model);
 
-            // 抓取指針名稱（請確保 Blender 裡名稱一致）
             hourHand = model.getObjectByName('HourHand');
             minuteHand = model.getObjectByName('MinuteHand');
             secondHand = model.getObjectByName('SecondHand');
 
-            // 修正模型初始角度（如果時鐘在網頁是躺著的，才需要手動轉 model.rotation）
-            // model.rotation.x = Math.PI / 2; 
-
-            console.log("時鐘載入成功，已鎖定視角限制！");
+            console.log("正面視角已設定完成");
         }, undefined, (error) => {
             console.error("載入失敗：", error);
         });
@@ -107,20 +103,18 @@
                 const m = now.getMinutes() + s / 60;
                 const h = (now.getHours() % 12) + m / 60;
 
-                // 根據模型軸向設定，通常轉動 Y 或 Z 軸
-                // 如果轉的方向不對，請將 "-" 刪掉或把 .rotation.y 改成 .rotation.z
+                // 旋轉指針
                 secondHand.rotation.y = -(s / 60) * Math.PI * 2;
                 minuteHand.rotation.y = -(m / 60) * Math.PI * 2;
                 hourHand.rotation.y = -(h / 12) * Math.PI * 2;
             }
 
-            controls.update(); // 必須呼叫才能讓限制生效
+            controls.update();
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // 視窗縮放
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
