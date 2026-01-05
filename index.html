@@ -66,37 +66,29 @@
         });
 
         // --- 動畫與時間同步邏輯 ---
-        function animate() {
-            requestAnimationFrame(animate);
+       function animate() {
+        requestAnimationFrame(animate);
 
-            if (hourHand && minuteHand && secondHand) {
-                const now = new Date();
-                const h = now.getHours();
-                const m = now.getMinutes();
-                const s = now.getSeconds();
-                const ms = now.getMilliseconds();
+        if (hourHand && minuteHand && secondHand) {
+            const now = new Date();
+            const ms = now.getMilliseconds();
+            const s = now.getSeconds() + ms / 1000;
+            const m = now.getMinutes() + s / 60;
+            const h = (now.getHours() % 12) + m / 60;
 
-                // 計算角度 (弧度制)
-                // 圓周是 Math.PI * 2
-                // 我們讓它繞 Y 軸轉 (rotation.y)
-                
-                // 秒針：每一毫秒都在微動，達成平滑效果
-                const s_ratio = (s + ms / 1000) / 60;
-                secondHand.rotation.y = -s_ratio * Math.PI * 2;
-
-                // 分針
-                const m_ratio = (m + s_ratio) / 60;
-                minuteHand.rotation.y = -m_ratio * Math.PI * 2;
-
-                // 時針 (12小時制)
-                const h_ratio = ((h % 12) + m_ratio) / 12;
-                hourHand.rotation.y = -h_ratio * Math.PI * 2;
-            }
-
-            controls.update();
-            renderer.render(scene, camera);
+            // 根據你的模型結構，通常在 Three.js 裡是繞 Y 軸轉動
+            // 如果 Y 不對，請嘗試換成 .rotation.z
+            secondHand.rotation.y = -(s / 60) * Math.PI * 2;
+            minuteHand.rotation.y = -(m / 60) * Math.PI * 2;
+            hourHand.rotation.y = -(h / 12) * Math.PI * 2;
+        } else {
+            // 如果一直顯示這個，代表 model.getObjectByName 沒抓到正確的名稱
+            // console.log("等待模型加載中...");
         }
 
+        controls.update();
+        renderer.render(scene, camera);
+    }
         animate();
 
         // 視窗縮放處理
@@ -108,3 +100,4 @@
     </script>
 </body>
 </html>
+
