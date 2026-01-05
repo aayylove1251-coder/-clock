@@ -2,15 +2,24 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>3D 同步時鐘預覽</title>
+    <title>3D 同步時鐘 - 限制視角版</title>
     <style>
         body { margin: 0; background-color: #222; overflow: hidden; }
         canvas { display: block; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-family: sans-serif; pointer-events: none; }
+        #info { 
+            position: absolute; 
+            top: 10px; 
+            width: 100%; 
+            text-align: center; 
+            color: white; 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+        }
     </style>
 </head>
 <body>
-    <div id="info">正在同步系統時間...</div>
+    <div id="info">滑鼠左鍵可旋轉視角 (限制 45度)</div>
 
     <script type="importmap">
         {
@@ -26,77 +35,97 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- 場景設定 ---
+        // --- 1. 場景初始化 ---
         const scene = new THREE.Scene();
+        // 背景顏色稍微亮一點可以看到邊框
+        scene.background = new THREE.Color(0x1a1a1a);
+
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 5);
+        // 設定相機初始位置（正面對著時鐘）
+        camera.position.set(0, 0, 5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        // 控制器（讓你家用滑鼠旋轉查看時鐘）
+        // --- 2. 限制視角的控制器 (OrbitControls) ---
         const controls = new OrbitControls(camera, renderer.domElement);
+        
+        controls.enablePan = false;        // 禁用右鍵平移
+        controls.enableDamping = true;     // 開啟阻尼感（滑順移動）
+        controls.dampingFactor = 0.05;
 
-        // 光源
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        // 限制左右旋轉角度 (Azimuth)：±45度 = ±Math.PI / 4
+        controls.minAzimuthAngle = -Math.PI / 4; 
+        controls.maxAzimuthAngle = Math.PI / 4;
+
+        // 限制上下旋轉角度 (Polar)：以 90度(正中央) 為準 ±45度
+        controls.minPolarAngle = Math.PI / 4;       // 仰角 45度
+        controls.maxPolarAngle = Math.PI * 3 / 4;   // 俯角 135度 (90+45)
+
+        // 限制縮放距離（選配，防止滾輪滾太遠）
+        controls.minDistance = 2;
+        controls.maxDistance = 10;
+
+        // --- 3. 光源 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(5, 10, 7);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 5, 5);
         scene.add(dirLight);
 
-        // --- 載入你的 2026-01-05.glb 模型 ---
+        // --- 4. 載入模型 ---
         let hourHand, minuteHand, secondHand;
 
         const loader = new GLTFLoader();
-        // 請確保檔案名稱與模型檔案一致
         loader.load('2026-01-05.glb', (gltf) => {
             const model = gltf.scene;
             scene.add(model);
 
-            // 抓取模型中的指針節點
+            // 抓取指針名稱（請確保 Blender 裡名稱一致）
             hourHand = model.getObjectByName('HourHand');
             minuteHand = model.getObjectByName('MinuteHand');
             secondHand = model.getObjectByName('SecondHand');
 
-            console.log("時鐘模型載入完畢！");
+            // 修正模型初始角度（如果時鐘在網頁是躺著的，才需要手動轉 model.rotation）
+            // model.rotation.x = Math.PI / 2; 
+
+            console.log("時鐘載入成功，已鎖定視角限制！");
         }, undefined, (error) => {
-            console.error("載入出錯：", error);
+            console.error("載入失敗：", error);
         });
 
-        // --- 動畫與時間同步邏輯 ---
-       function animate() {
-    requestAnimationFrame(animate);
+        // --- 5. 動畫迴圈 ---
+        function animate() {
+            requestAnimationFrame(animate);
 
-    if (hourHand && minuteHand && secondHand) {
-        const now = new Date();
-        const s = now.getSeconds();
-        const m = now.getMinutes();
-        const h = now.getHours();
-        const ms = now.getMilliseconds();
+            if (hourHand && minuteHand && secondHand) {
+                const now = new Date();
+                const ms = now.getMilliseconds();
+                const s = now.getSeconds() + ms / 1000;
+                const m = now.getMinutes() + s / 60;
+                const h = (now.getHours() % 12) + m / 60;
 
-        // 1. 計算旋轉比例
-        const s_ratio = (s + ms / 1000) / 60;
-        const m_ratio = (m + s_ratio) / 60;
-        const h_ratio = ((h % 12) + m_ratio) / 12;
+                // 根據模型軸向設定，通常轉動 Y 或 Z 軸
+                // 如果轉的方向不對，請將 "-" 刪掉或把 .rotation.y 改成 .rotation.z
+                secondHand.rotation.y = -(s / 60) * Math.PI * 2;
+                minuteHand.rotation.y = -(m / 60) * Math.PI * 2;
+                hourHand.rotation.y = -(h / 12) * Math.PI * 2;
+            }
 
-        // 2. 轉換為弧度 (2π = 一圈)
-        const s_rot = s_ratio * Math.PI * 2;
-        const m_rot = m_ratio * Math.PI * 2;
-        const h_rot = h_ratio * Math.PI * 2;
+            controls.update(); // 必須呼叫才能讓限制生效
+            renderer.render(scene, camera);
+        }
 
-        // 3. 根據你的模型結構，應該旋轉 X 軸
-        // 如果發現轉的方向反了，把 "-" 號拿掉或加上去
-        secondHand.rotation.x = -s_rot;
-        minuteHand.rotation.x = -m_rot;
-        hourHand.rotation.x = -h_rot;
-    }
+        animate();
 
-    controls.update();
-    renderer.render(scene, camera);
-}
+        // 視窗縮放
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
-
