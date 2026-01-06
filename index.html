@@ -47,9 +47,9 @@
 
       // 抓取模型內部的節點 (Nodes)
       // 這裡的名稱必須跟 Blender 裡的一模一樣
-      const secondNode = modelViewer.model.nodes['Seconds'];
-      const minuteNode = modelViewer.model.nodes['Minutes'];
-      const hourNode = modelViewer.model.nodes['Hours'];
+      const SecondHand = modelViewer.model.nodes['Seconds'];
+      const MinuteHand = modelViewer.model.nodes['Minutes'];
+      const HourHand= modelViewer.model.nodes['Hours'];
 
       // 套用旋轉 (假設是繞著 Y 軸轉，如果你的時鐘是躺著的，可能要改 .rotation.z)
       if (secondNode) secondNode.rotation.setFromQuaternion([0, Math.sin(secDeg * Math.PI / 360), 0, Math.cos(secDeg * Math.PI / 360)]);
