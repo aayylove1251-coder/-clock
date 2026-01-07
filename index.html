@@ -2,9 +2,9 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>3D 同步時鐘｜最終完整版</title>
+<title>3D 同步時鐘（修正版）</title>
 <style>
-    body { margin: 0; overflow: hidden; background: radial-gradient(#222, #000); }
+    body { margin: 0; overflow: hidden; background: #111; }
     canvas { display: block; }
 </style>
 </head>
@@ -15,167 +15,82 @@
 <script>
 let scene, camera, renderer;
 let hourHand, minuteHand, secondHand;
-let clockGroup;
-let dragging = false;
-let lastX = 0;
-let rotY = 0;
+let clock = new Date();
 
 init();
 animate();
 
-/* ---------- 初始化 ---------- */
 function init() {
     scene = new THREE.Scene();
 
-    camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
-    camera.position.set(0, 5, 10);
+    camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100
+    );
+    camera.position.set(0, 4, 10);
     camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    /* 光源 */
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(5, 10, 6);
-    scene.add(dir);
+    // 光源
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(5, 10, 7);
+    scene.add(light);
 
-    /* 時鐘群組 */
-    clockGroup = new THREE.Group();
-    scene.add(clockGroup);
-
-    /* 錶殼 */
-    const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(3.3, 3.3, 0.8, 64),
-        new THREE.MeshStandardMaterial({
-            color: 0x555555,
-            metalness: 0.8,
-            roughness: 0.25
-        })
-    );
-    body.rotation.x = Math.PI / 2;
-    clockGroup.add(body);
-
-    /* 錶盤 */
+    // 錶盤
     const face = new THREE.Mesh(
         new THREE.CircleGeometry(3, 64),
-        new THREE.MeshStandardMaterial({ color: 0x111111 })
+        new THREE.MeshStandardMaterial({ color: 0x222222 })
     );
     face.rotation.x = -Math.PI / 2;
-    face.position.y = 0.41;
-    clockGroup.add(face);
+    scene.add(face);
 
-    /* 數字刻度 */
-    addNumbers();
-
-    /* 指針 */
-    hourHand   = createHand(1.5, 0.18, 0xffffff);
-    minuteHand = createHand(2.2, 0.12, 0x00ffff);
+    // 指針（重點：pivot 在底部）
+    hourHand   = createHand(1.5, 0.15, 0xffffff);
+    minuteHand = createHand(2.2, 0.1, 0x00ffff);
     secondHand = createHand(2.6, 0.05, 0xff3333);
 
-    clockGroup.add(hourHand, minuteHand, secondHand);
+    scene.add(hourHand, minuteHand, secondHand);
 
-    /* 互動 */
-    addControls();
-
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', onResize);
 }
 
-/* ---------- 指針 ---------- */
 function createHand(length, width, color) {
     const geo = new THREE.BoxGeometry(width, length, width);
-    geo.translate(0, length / 2, 0);
-    const mesh = new THREE.Mesh(
-        geo,
-        new THREE.MeshStandardMaterial({ color })
-    );
+    geo.translate(0, length / 2, 0); // ⭐關鍵：旋轉中心在底部
+    const mat = new THREE.MeshStandardMaterial({ color });
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = 0.45;
     return mesh;
 }
 
-/* ---------- 數字 ---------- */
-function addNumbers() {
-    const loader = new THREE.FontLoader();
-    loader.load(
-        "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-        font => {
-            const nums = [
-                { t: "12", a: 0 },
-                { t: "3",  a: Math.PI / 2 },
-                { t: "6",  a: Math.PI },
-                { t: "9",  a: -Math.PI / 2 }
-            ];
-
-            nums.forEach(n => {
-                const geo = new THREE.TextGeometry(n.t, {
-                    font, size: 0.4, height: 0.05
-                });
-                const mesh = new THREE.Mesh(
-                    geo,
-                    new THREE.MeshStandardMaterial({ color: 0xffffff })
-                );
-                mesh.position.set(
-                    Math.sin(n.a) * 2.4,
-                    0.45,
-                    Math.cos(n.a) * 2.4
-                );
-                mesh.rotation.x = -Math.PI / 2;
-                mesh.rotation.z = n.a;
-                clockGroup.add(mesh);
-            });
-        }
-    );
-}
-
-/* ---------- 拖曳限制旋轉 ---------- */
-function addControls() {
-    const down = e => {
-        dragging = true;
-        lastX = e.touches ? e.touches[0].clientX : e.clientX;
-    };
-    const move = e => {
-        if (!dragging) return;
-        const x = e.touches ? e.touches[0].clientX : e.clientX;
-        rotY += (x - lastX) * 0.005;
-        rotY = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, rotY));
-        clockGroup.rotation.y = rotY;
-        lastX = x;
-    };
-    const up = () => dragging = false;
-
-    addEventListener("mousedown", down);
-    addEventListener("mousemove", move);
-    addEventListener("mouseup", up);
-    addEventListener("touchstart", down);
-    addEventListener("touchmove", move);
-    addEventListener("touchend", up);
-}
-
-/* ---------- 時間同步 ---------- */
 function animate() {
     requestAnimationFrame(animate);
 
     const now = new Date();
-    const s = now.getSeconds();
-    const m = now.getMinutes();
-    const h = now.getHours() % 12;
+    const sec = now.getSeconds();
+    const min = now.getMinutes();
+    const hr  = now.getHours() % 12;
 
-    secondHand.rotation.z = -s * Math.PI / 30;
-    minuteHand.rotation.z = -(m + s / 60) * Math.PI / 30;
-    hourHand.rotation.z   = -(h + m / 60) * Math.PI / 6;
+    secondHand.rotation.z = -sec * (Math.PI / 30);
+    minuteHand.rotation.z = -(min + sec / 60) * (Math.PI / 30);
+    hourHand.rotation.z   = -(hr + min / 60) * (Math.PI / 6);
 
     renderer.render(scene, camera);
 }
 
-function resize() {
-    camera.aspect = innerWidth / innerHeight;
+function onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 </script>
 
 </body>
 </html>
+
