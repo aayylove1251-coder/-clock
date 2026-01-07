@@ -92,7 +92,35 @@ model-viewer {
   from { transform: translateX(-50%) rotate(0deg) translateX(50px) rotate(0deg); }
   to   { transform: translateX(-50%) rotate(360deg) translateX(50px) rotate(-360deg); }
 }
+function updateClock() {
+    const now = new Date(); // 獲取現在時間
 
+    const seconds = now.getSeconds();
+    const minutes = now.getMinutes();
+    const hours = now.getHours();
+
+    // --- 計算角度 ---
+    // 秒針：一圈 360 度 / 60 秒 = 每秒 6 度
+    const secondDegree = seconds * 6;
+
+    // 分針：每分 6 度 + 秒針造成的微幅位移 (每秒位移 6/60 = 0.1 度)
+    const minuteDegree = (minutes * 6) + (seconds * 0.1);
+
+    // 時針：一圈 360 度 / 12 小時 = 每小時 30 度
+    // 加上分鐘造成的位移 (每分位移 30/60 = 0.5 度)
+    const hourDegree = (hours % 12 * 30) + (minutes * 0.5);
+
+    // --- 套用旋轉 ---
+    document.getElementById('second').style.transform = `translateX(-50%) rotate(${secondDegree}deg)`;
+    document.getElementById('minute').style.transform = `translateX(-50%) rotate(${minuteDegree}deg)`;
+    document.getElementById('hour').style.transform = `translateX(-50%) rotate(${hourDegree}deg)`;
+}
+
+// 每 1000 毫秒 (1秒) 更新一次
+setInterval(updateClock, 1000);
+
+// 網頁載入時先執行一次，避免空白等待
+updateClock();
 @keyframes elongate {
   from { transform: translateX(100px); }
   to   { transform: translateX(-100px); }
