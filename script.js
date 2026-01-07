@@ -41,3 +41,30 @@ modelViewer.addEventListener('load', () => {
     // 但如果要分別轉動，建議使用 Three.js 的寫法如下：
   }, 1000);
 });
+ // 建立每秒執行一次的循環
+    setInterval(() => {
+      const now = new Date();
+      
+      const seconds = now.getSeconds();
+      const minutes = now.getMinutes();
+      const hours = now.getHours();
+
+      // 計算旋轉角度 (360度制)
+      // 注意：根據你在 Blender 導出的方向，可能需要調整正負號
+      const secDeg = -seconds * 6; 
+      const minDeg = -minutes * 6;
+      const hourDeg = -(hours % 12) * 30 - (minutes * 0.5);
+
+      // 抓取模型內部的節點 (Nodes)
+      // 這裡的名稱必須跟 Blender 裡的一模一樣
+      const SecondHand = modelViewer.model.nodes['Seconds'];
+      const MinuteHand = modelViewer.model.nodes['Minutes'];
+      const HourHand= modelViewer.model.nodes['Hours'];
+
+      // 套用旋轉 (假設是繞著 Y 軸轉，如果你的時鐘是躺著的，可能要改 .rotation.z)
+      if (secondNode) secondNode.rotation.setFromQuaternion([0, Math.sin(secDeg * Math.PI / 360), 0, Math.cos(secDeg * Math.PI / 360)]);
+      if (minuteNode) minuteNode.rotation.setFromQuaternion([0, Math.sin(minDeg * Math.PI / 360), 0, Math.cos(minDeg * Math.PI / 360)]);
+      if (hourNode) hourNode.rotation.setFromQuaternion([0, Math.sin(hourDeg * Math.PI / 360), 0, Math.cos(hourDeg * Math.PI / 360)]);
+
+    }, 1000);
+  });
