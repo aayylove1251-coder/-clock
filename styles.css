@@ -12,7 +12,10 @@ body {
   width: 100%;
   height: 100%;
 }
-
+.hand {
+    transform-origin: bottom; /* 關鍵：設定旋轉軸心 */
+    transition: transform 0.05s cubic-bezier(0.1, 2.7, 0.58, 1); /* 讓指針跳動更自然 */
+}
 model-viewer {
   width: 100%;
   height: 90%;
